@@ -69,20 +69,23 @@ class FileManager:
             logger.error(f"打包失败: {str(e)}")
             sys.exit(1)
 
-"""
-    def handle_unpack(self, args):
-        """处理解压命令"""
-        try:
-            unpacker = CustomUnpackager(self._get_key(args.key))
-            unpacker.unpack(
-                Path(args.input),
-                Path(args.output) if args.output else None
-            )
-            logger.info(f"解压成功: {args.input}")
-        except Exception as e:
-            logger.error(f"解压失败: {str(e)}")
-            sys.exit(1)
- """   
+
+def handle_unpack(self, args):
+    """处理解包命令"""
+    try:
+        unpacker = CustomPackager(self._get_key(args.key))
+        unpacker.unpack(
+            Path(args.input),
+            Path(args.output) if args.output else None
+        )
+        logger.info(f"解包成功: {args.input}")
+    except Exception as e:
+        logger.error(f"解包失败: {str(e)}")
+        sys.exit(1)
+
+
+
+
 
     def handle_encrypt(self, args):
         """处理加密命令"""
@@ -138,12 +141,14 @@ def main():
     )
     subparsers = parser.add_subparsers(title='可用命令', dest='command')
 
+
     # 打包命令
     pack_parser = subparsers.add_parser('pack', help='自定义打包文件')
     pack_parser.add_argument('-o', '--output', required=True, help='输出文件路径')
     pack_parser.add_argument('-k', '--key', help='加密密钥')
     pack_parser.add_argument('files', nargs='+', help='要打包的文件列表')
     pack_parser.set_defaults(func=fm.handle_pack)
+
 
     # 加密命令
     encrypt_parser = subparsers.add_parser('encrypt', help='文件加密')

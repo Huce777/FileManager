@@ -121,18 +121,94 @@ class BasePackager:
         return files
 
 
+
 class CustomPackager(BasePackager):
     """自定义打包器"""
 
     def package(self, files: List[Path], output: Path) -> Path:
         """打包文件"""
-        raise NotImplementedError()
+        validated = validate_paths(*files)
+        file_list = []
+        total_size = 0
+
+        # 准备文件信息
+        for path in validated:
+            sha256 = hashlib.sha256(path.read_bytes()).hexdigest()
+            file_list.append({
+                'path': str(path.relative_to(Path.cwd())),
+                'size': path.stat().st_size,
+                'sha256': sha256
+            })
+            total_size += path.stat().st_size
+
+        # 生成文件头
+        header = self._generate_header(file_list)
+        processed = 0
+
+        try:
+            with open(output, 'wb') as fout:
+                # 写入文件头
+                fout.write(header)
+
+                # 写入文件内容
+                for file_info, path in zip(file_list, validated):
+                    with open(path, 'rb') as fin:
+                        while chunk := fin.read(self.CHUNK_SIZE):
+                            fout.write(chunk)
+                            processed += len(chunk)
+                            self._update_progress(processed, total_size)
+
+            return output
+        except Exception as e:
+            safe_delete(output)
+            raise PackingError(f"打包失败: {str(e)}") from e
 
     def unpack(self, package: Path, output_dir: Path) -> List[Path]:
         """解包文件"""
-        raise NotImplementedError()
+        validated = validate_paths(package)
+        output_dir.mkdir(exist_ok=True, parents=True)
 
+        with open(package, 'rb') as fin:
+            # 读取文件头
+            magic = fin.read(len(self.HEADER_MAGIC))
+            if magic != self.HEADER_MAGIC:
+                raise PackingError("无效的打包文件")
 
+            header_size = struct.unpack('!I', fin.read(4))[0]
+            fin.seek(0)
+            header_data = fin.read(header_size)
+            files = self._parse_header(header_data)
+
+            # 提取文件
+            extracted = []
+            total_size = sum(f['size'] for f in files)
+            processed = 0
+
+            for file_info in files:
+                output_path = output_dir / file_info['path']
+                output_path.parent.mkdir(exist_ok=True, parents=True)
+
+                with open(output_path, 'wb') as fout:
+                    remaining = file_info['size']
+                    while remaining > 0:
+                        chunk_size = min(remaining, self.CHUNK_SIZE)
+                        chunk = fin.read(chunk_size)
+                        if not chunk:
+                            raise PackingError("文件数据不完整")
+                        fout.write(chunk)
+                        remaining -= len(chunk)
+                        processed += len(chunk)
+                        self._update_progress(processed, total_size)
+
+                # 验证哈希
+                current_hash = hashlib.sha256(output_path.read_bytes()).hexdigest()
+                if current_hash != file_info['sha256']:
+                    safe_delete(output_path)
+                    raise PackingError(f"文件校验失败: {file_info['path']}")
+
+                extracted.append(output_path)
+
+            return extracted
 
 
 class SequentialPackager(BasePackager):
