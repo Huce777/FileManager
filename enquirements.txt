@@ -1,0 +1,25 @@
+# pip install -r requirements.txt   语句安装依赖库
+
+# cryptography 库用于文件的加密和解密操作
+cryptography==41.0.4
+
+# zstandard 库用于更高级的压缩操作
+zstandard==0.18.0
+
+# pycryptodome 库用于文件哈希计算和加密操作
+pycryptodome==3.14.1
+
+# send2trash 库用于更复杂的文件操作，如将文件移至回收站
+send2trash==1.8.0
+
+# pillow 库用于处理图像文件
+pillow==10.0.0
+
+# python-docx 库用于处理 Word 文档
+python-docx==0.8.11
+
+# jieba 库用于中文分词，用于文本过滤功能
+jieba==0.42.1
+
+# tkinter 库用于创建图形用户界面
+tk==0.1.0
